@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const sleep = require('sleep');
 const XLSX = require('xlsx');
 const path = require('path');
+const ProgressBar = require('progress');
 
 var stringCleanUp = text => {
     return text.replace(/[\t\r\n]/g, '').trim();
@@ -108,8 +109,12 @@ var domPromise = new Promise((resolve, reject) => {
     );
 });
 
+const nameTrimWording = ['議員', '先生', '女士', ',', 'MH', 'JP', 'BBS'];
+
 var processMembers = function (memberUrls) {
-    console.log('Process memberUrls');
+    var bar2 = new ProgressBar('Loading member data :current/:total', {
+        total: memberUrls.length
+    });
     var result = [];
     return memberUrls.reduce(function (p, m) {
         return p.then(function () {
@@ -125,9 +130,11 @@ var processMembers = function (memberUrls) {
                         });
                         var member = {};
                         member.name = stringCleanUp($('.member_name').text());
-                        if (member.name.indexOf('議員') > 0) {
-                            member.name = member.name.substr(0, member.name.indexOf('議員'));
-                        }
+                        nameTrimWording.forEach((w) => {
+                            if (member.name.indexOf(w) > 0) {
+                                member.name = member.name.substr(0, member.name.indexOf(w));
+                            }
+                        });
                         member.district = $('.mySection').text();
                         member.district = member.district.substr(0, member.district.indexOf('區議會'));
                         member.seat = stringCleanUp($(':innertext(席位)').parent().text()).replace('席位', '');
@@ -144,6 +151,7 @@ var processMembers = function (memberUrls) {
                         });
                         member.email = emails.join(' / ');
                         result.push(member);
+                        bar2.tick();
                         resolve();
                     }
                 );
@@ -157,10 +165,12 @@ var processMembers = function (memberUrls) {
 
 var promiseChain = domPromise.then((districts) => {
         var districtsPromises = [];
-        console.log('Process districts');
+        var bar1 = new ProgressBar('Loading districts :current/:total', {
+            total: districts.length
+        });
         for (let d in districts) {
             var p = new Promise((resolve, reject) => {
-                
+
                 jsdom.env('http://www.districtcouncils.gov.hk/' + districts[d] + '/tc_chi/members/info/dc_member_list.php',
                     function (err, window) {
                         const $ = require('jquery')(window);
@@ -170,6 +180,7 @@ var promiseChain = domPromise.then((districts) => {
                                 memberUrl: $(e).attr('href')
                             };
                         });
+                        bar1.tick();
                         resolve(memberUrls);
                     }
                 );
