@@ -1,6 +1,5 @@
 const jsdom = require("jsdom").jsdom;
 const fetch = require('node-fetch');
-const sleep = require('sleep');
 const XLSX = require('xlsx');
 const path = require('path');
 const ProgressBar = require('progress');
